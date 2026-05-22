@@ -1,0 +1,10 @@
+title: loghop
+description: Switch AI coding assistants without starting over
+url: https://elruleh.github.io
+baseurl: /loghop
+markdown: kramdown
+plugins:
+  - jekyll-relative-links
+relative_links:
+  enabled: true
+  collections: false

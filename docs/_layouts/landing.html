@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>loghop — switch AI coding assistants without starting over</title>
+  <meta name="description" content="{{ page.description | default: site.description | escape }}">
+  <meta property="og:title" content="loghop">
+  <meta property="og:description" content="{{ page.description | default: site.description | escape }}">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="{{ page.url | absolute_url }}">
+  <meta property="og:image" content="{{ '/img/social-preview.png' | absolute_url }}">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="loghop">
+  <meta name="twitter:description" content="{{ page.description | default: site.description | escape }}">
+  <meta name="twitter:image" content="{{ '/img/social-preview.png' | absolute_url }}">
+  <link rel="stylesheet" href="{{ '/assets/site.css' | relative_url }}">
+</head>
+<body class="landing-page">
+  <a class="skip-link" href="#content">Skip to content</a>
+  <header class="site-header landing-header">
+    <div class="shell nav">
+      <a class="brand" href="{{ '/' | relative_url }}" aria-label="loghop documentation home">loghop<span>_</span></a>
+      <nav class="top-links" aria-label="Primary navigation">
+        <a href="#install">Install</a>
+        <a href="#workflow">Workflow</a>
+        <a href="#docs">Docs</a>
+        <a href="https://github.com/elruleh/loghop">GitHub</a>
+        <a href="https://pypi.org/project/loghop/">PyPI</a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="content" tabindex="-1">
+    {{ content }}
+  </main>
+
+  <footer class="site-footer">
+    <div class="shell footer-grid">
+      <span>MIT licensed · built for local-first AI coding workflows</span>
+      <span><a href="https://github.com/elruleh/loghop">GitHub</a> · <a href="https://pypi.org/project/loghop/">PyPI</a></span>
+    </div>
+  </footer>
+</body>
+</html>

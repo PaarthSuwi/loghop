@@ -1,0 +1,39 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="640" viewBox="0 0 1280 640" role="img" aria-labelledby="title desc">
+  <title id="title">loghop social preview</title>
+  <desc id="desc">Dark editorial social preview for loghop: switch AI coding assistants without starting over.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#050B14"/>
+      <stop offset="0.55" stop-color="#08111D"/>
+      <stop offset="1" stop-color="#101827"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="24%" cy="28%" r="75%">
+      <stop offset="0" stop-color="#22D3EE" stop-opacity="0.24"/>
+      <stop offset="0.45" stop-color="#22D3EE" stop-opacity="0.07"/>
+      <stop offset="1" stop-color="#22D3EE" stop-opacity="0"/>
+    </radialGradient>
+    <pattern id="grid" width="64" height="64" patternUnits="userSpaceOnUse">
+      <path d="M64 0H0V64" fill="none" stroke="#22D3EE" stroke-opacity="0.08" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="1280" height="640" fill="url(#bg)"/>
+  <rect width="1280" height="640" fill="url(#glow)"/>
+  <rect width="1280" height="640" fill="url(#grid)" opacity="0.8"/>
+  <g font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <text x="86" y="178" fill="#E6FDFF" font-size="104" font-weight="800" letter-spacing="-9">loghop<tspan fill="#22D3EE">_</tspan></text>
+    <text x="91" y="244" fill="#DFFBFF" font-size="32" font-weight="700" letter-spacing="-1.2">capture → redact → handoff → resume</text>
+    <text x="91" y="324" fill="#9FB6D3" font-size="34" font-weight="500" letter-spacing="-1.1">Switch AI coding assistants</text>
+    <text x="91" y="368" fill="#9FB6D3" font-size="34" font-weight="500" letter-spacing="-1.1">without starting over.</text>
+  </g>
+  <g transform="translate(790 120)" font-family="ui-monospace, SFMono-Regular, Menlo, Consolas, monospace">
+    <rect x="0" y="0" width="380" height="334" rx="24" fill="#07111E" fill-opacity="0.88" stroke="#7DD3FC" stroke-opacity="0.24"/>
+    <circle cx="36" cy="38" r="8" fill="#FF5F57"/>
+    <circle cx="62" cy="38" r="8" fill="#FFBD2E"/>
+    <circle cx="88" cy="38" r="8" fill="#28C840"/>
+    <text x="34" y="102" fill="#22D3EE" font-size="23" font-weight="800">$ loghop run</text>
+    <text x="34" y="150" fill="#C7D9EE" font-size="22">Claude Code captured</text>
+    <text x="34" y="198" fill="#34D058" font-size="22">✓ timeline updated</text>
+    <text x="34" y="246" fill="#34D058" font-size="22">✓ Codex can resume</text>
+    <text x="34" y="294" fill="#6F938B" font-size="19">local-first · MIT · Python</text>
+  </g>
+</svg>
