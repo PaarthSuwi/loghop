@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import contextlib
 import io
+import os
 import stat
 import subprocess
 import sys
@@ -31,7 +32,13 @@ def _isolate_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     fake_home.mkdir(exist_ok=True)
     monkeypatch.setenv("HOME", str(fake_home))
     monkeypatch.setenv("USERPROFILE", str(fake_home))
-    monkeypatch.setattr(Path, "home", classmethod(lambda cls: fake_home))
+    monkeypatch.setattr(
+        Path,
+        "home",
+        classmethod(
+            lambda cls: Path(os.environ.get("HOME") or os.environ.get("USERPROFILE") or fake_home)
+        ),
+    )
 
 
 @pytest.fixture

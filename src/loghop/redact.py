@@ -11,19 +11,19 @@ SECRET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
             r"(?i)\b(\w{0,50}(?:ANTHROPIC|OPENAI|GOOGLE|GITHUB|AWS|AZURE|STRIPE|SLACK|HUGGINGFACE"
             r"|COHERE|MISTRAL|RESEND|POSTMARK|TWILIO|SENDGRID|DATADOG|GRAFANA)"
             r"[_-]?(?:API[_-]?KEY|SECRET[_-]?KEY|ACCESS[_-]?KEY|SESSION[_-]?TOKEN|TOKEN))"
-            r"\s*([=:])\s*(?:\"[^\"]*\"|'[^']*'|\S+)"
+            r"\s*([=:])\s*(?!\[redacted\b)(?:\"[^\"]*\"|'[^']*'|\S+)"
         ),
         r"\1\2[redacted]",
     ),
     (
         re.compile(
-            r"(?i)\b([A-Z0-9_]{0,50}(?:SESSION_TOKEN|KEY_BASE))\s*([=:])\s*(?:\"[^\"]*\"|'[^']*'|\S+)"
+            r"(?i)\b([A-Z0-9_]{0,50}(?:SESSION_TOKEN|KEY_BASE))\s*([=:])\s*(?!\[redacted\b)(?:\"[^\"]*\"|'[^']*'|\S+)"
         ),
         r"\1\2[redacted]",
     ),
     (
         re.compile(
-            r"(?i)\b(\w{0,50}(?:api[_-]?key|secret|password|passwd|token|auth[_-]?token|access[_-]?token|refresh[_-]?token|private[_-]?key|credentials?))\s*([:=])\s*(?:\"[^\"]*\"|'[^']*'|\S+)"
+            r"(?i)\b(\w{0,50}(?:api[_-]?key|secret|password|passwd|token|auth[_-]?token|access[_-]?token|refresh[_-]?token|private[_-]?key|credentials?))\s*([:=])\s*(?!\[redacted\b)(?:\"[^\"]*\"|'[^']*'|\S+)"
         ),
         r"\1\2[redacted]",
     ),
@@ -35,7 +35,7 @@ SECRET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
     ),
     (
         re.compile(
-            r"(?i)\b(DATABASE_URL|MONGO_URI|REDIS_URL|CONNECTION_STRING|CONN_STR)\s*([=:])\s*(?:\"[^\"]*\"|'[^']*'|\S+)"
+            r"(?i)\b(DATABASE_URL|MONGO_URI|REDIS_URL|CONNECTION_STRING|CONN_STR)\s*([=:])\s*(?!\[redacted\b)(?:\"[^\"]*\"|'[^']*'|\S+)"
         ),
         r"\1\2[redacted]",
     ),
