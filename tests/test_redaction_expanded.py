@@ -232,7 +232,7 @@ class TestModernTokenFormats:
     def test_shorter_npm_token(self) -> None:
         from loghop.store._redact import redact_text
 
-        text = "NPM_TOKEN=npm_abc123ABC"
+        text = "my token is npm_abc123ABC"
         out = redact_text(text)
         assert "npm_abc123ABC" not in out
         assert "npm token" in out.lower()

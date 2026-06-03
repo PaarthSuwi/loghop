@@ -7,6 +7,20 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.1.1] - 2026-06-03
+
+### Added
+- Polymorphic provider architecture under `src/loghop/providers/` extending `BaseProvider` for future-proof AI provider integration.
+- User-configurable terminal emulator and execution templates via `~/.loghop/config.toml` (vía `terminal.emulator` and `terminal.template`), with variable placeholders (`{title}`, `{workdir}`, `{command}`) and bash command list expansion (`{bash_command}`).
+- Fallback generic command execution for custom terminal emulators lacking a builder.
+- Extended HMAC-SHA256 integrity signature to 32 hex chars with backward-compatible 16-char validation fallback.
+
+### Changed
+- Bounded greedy prefix wildcards in `redact.py` secrets redaction pattern to 50 characters, preventing catastrophic backtracking (ReDoS) on large input strings.
+- Hardened POSIX advisory lock files with the `O_NOFOLLOW` flag to mitigate symlink attack vulnerabilities.
+- Isolated test environments (`HOME`, `USERPROFILE`, and `Path.home()`) to prevent parallel test conflicts.
+- Cleared shadowing `providers.py` module in favor of the new providers package.
+
 ## [0.1.0] - 2026-04-29
 
 ### Added
@@ -76,7 +90,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Core commands: `init`, `note`, `task`, `status`, `handoff`, `import`,
   `export`.
 
-[Unreleased]: https://github.com/elruleh/loghop/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/elruleh/loghop/compare/v0.1.1...HEAD
+[0.1.1]: https://github.com/elruleh/loghop/releases/tag/v0.1.1
 [0.1.0]: https://github.com/elruleh/loghop/releases/tag/v0.1.0
 [Pre-0.1 rewrite]: https://github.com/elruleh/loghop/commits/main
 [Prototype]: https://github.com/elruleh/loghop/commits/main

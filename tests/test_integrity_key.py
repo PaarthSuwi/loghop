@@ -67,3 +67,25 @@ def test_markdown_signature_covers_body(git_repo: Path) -> None:
     assert "_signature:" in signed
     assert verify_signature(git_repo, frontmatter, body) is True
     assert verify_signature(git_repo, frontmatter, body.replace("body", "tampered")) is False
+
+
+def test_signature_length_and_legacy_compatibility(git_repo: Path) -> None:
+    init_project(git_repo)
+    frontmatter = "id: S-001\nstatus: succeeded"
+
+    # Newly generated signatures should be 32 hex chars
+    sig_32 = compute_signature(git_repo, frontmatter)
+    assert len(sig_32) == 32
+
+    # 32-character signature validation
+    signed_32 = f"id: S-001\nstatus: succeeded\n_signature: {sig_32}"
+    assert verify_signature(git_repo, signed_32) is True
+
+    # 16-character legacy signature verification compatibility
+    sig_16 = sig_32[:16]
+    signed_16 = f"id: S-001\nstatus: succeeded\n_signature: {sig_16}"
+    assert verify_signature(git_repo, signed_16) is True
+
+    # Tampering should still fail for both lengths
+    assert verify_signature(git_repo, signed_32.replace("succeeded", "failed")) is False
+    assert verify_signature(git_repo, signed_16.replace("succeeded", "failed")) is False

@@ -322,3 +322,94 @@ class TestDetectTerminalPriority:
         ):
             detect_terminal_emulator()
         assert last_checked.index("gnome-terminal") < last_checked.index("konsole")
+
+
+class TestConfiguredTerminalAndTemplates:
+    def test_detects_configured_emulator(self) -> None:
+        with patch(
+            "loghop.install._config._load_global_config",
+            return_value={"terminal": {"emulator": "my-cool-term"}},
+        ):
+            assert detect_terminal_emulator() == "my-cool-term"
+
+    def test_detects_custom_when_template_present(self) -> None:
+        with patch(
+            "loghop.install._config._load_global_config",
+            return_value={"terminal": {"template": "myterm -e {command}"}},
+        ):
+            assert detect_terminal_emulator() == "custom"
+
+    def test_launch_with_custom_template_string(self) -> None:
+        mock_popen = MagicMock()
+        config = {
+            "terminal": {"template": "my-terminal --title {title} --dir {workdir} --exec {command}"}
+        }
+        with (
+            patch("loghop.install._config._load_global_config", return_value=config),
+            patch("loghop.tui.launcher.subprocess.Popen", mock_popen),
+        ):
+            result = launch_in_new_tab(
+                ["echo", "hi"], cwd=Path("/my/working/dir"), title="custom-title"
+            )
+
+        assert result is True
+        args = mock_popen.call_args[0][0]
+        assert args == [
+            "my-terminal",
+            "--title",
+            "custom-title",
+            "--dir",
+            "/my/working/dir",
+            "--exec",
+            "echo hi",
+        ]
+
+    def test_launch_with_custom_template_list_and_bash_command(self) -> None:
+        mock_popen = MagicMock()
+        config = {
+            "terminal": {
+                "template": [
+                    "custom-term",
+                    "-t",
+                    "{title}",
+                    "--cwd",
+                    "{workdir}",
+                    "--run",
+                    "{bash_command}",
+                ]
+            }
+        }
+        with (
+            patch("loghop.install._config._load_global_config", return_value=config),
+            patch("loghop.tui.launcher.subprocess.Popen", mock_popen),
+        ):
+            result = launch_in_new_tab(["echo", "hi"], cwd=Path("/my/dir"), title="test-title")
+
+        assert result is True
+        args = mock_popen.call_args[0][0]
+        assert args[0] == "custom-term"
+        assert args[1] == "-t"
+        assert args[2] == "test-title"
+        assert args[3] == "--cwd"
+        assert args[4] == "/my/dir"
+        assert args[5] == "--run"
+        assert args[6] == "bash"
+        assert args[7] == "-ic"
+        assert "echo hi" in args[8]
+
+    def test_generic_fallback_when_emulator_has_no_builder(self) -> None:
+        mock_popen = MagicMock()
+        config = {"terminal": {"emulator": "my-unknown-terminal"}}
+        with (
+            patch("loghop.install._config._load_global_config", return_value=config),
+            patch("loghop.tui.launcher.subprocess.Popen", mock_popen),
+        ):
+            result = launch_in_new_tab(["echo", "hi"])
+
+        assert result is True
+        args = mock_popen.call_args[0][0]
+        assert args[0] == "my-unknown-terminal"
+        assert args[1] == "-e"
+        assert args[2] == "bash"
+        assert args[3] == "-ic"
+        assert "echo hi" in args[4]

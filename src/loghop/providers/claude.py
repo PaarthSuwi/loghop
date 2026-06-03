@@ -3,7 +3,6 @@ import os
 import shutil
 import subprocess  # nosec B404
 import time
-from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
 
@@ -11,101 +10,68 @@ from loghop import env
 from loghop.errors import (
     AUTH_FAILURE_NEEDLES,
     E_PROVIDER_AUTH_MISSING,
-    E_UNKNOWN_PROVIDER,
     LoghopError,
 )
+from loghop.providers.base import BaseProvider, ProviderDetection
 from loghop.redact import redact_text
 
-SUPPORTED_PROVIDER_NAMES = ("codex", "claude")
 _CLAUDE_AUTH_TIMEOUT_SECONDS = 5
 _CLAUDE_SHELL_ENV_TIMEOUT_SECONDS = 3
 _CLAUDE_AUTH_FAILURE_NEEDLES = AUTH_FAILURE_NEEDLES
 
+_API_CREDENTIAL_ENV_VARS = (
+    "ANTHROPIC_API_KEY",
+    "ANTHROPIC_AUTH_TOKEN",
+)
+_API_TRANSPORT_ENV_VARS = ("ANTHROPIC_BASE_URL",)
+_CLAUDE_ENV_PREFIXES = (
+    "ANTHROPIC_",
+    "CLAUDE_CODE_",
+)
 
-@dataclass(frozen=True)
-class _ProviderDetection:
-    name: str
-    path: str
 
+class ClaudeProvider(BaseProvider):
     @property
-    def installed(self) -> bool:
-        return bool(self.path)
+    def name(self) -> str:
+        return "claude"
 
+    def detect(self, exclude_dir: Path | None = None) -> ProviderDetection:
+        path = shutil.which(self.name) or ""
+        return ProviderDetection(name=self.name, path=path)
 
-@dataclass(frozen=True)
-class _ClaudeAuthCheck:
-    available: bool
-    message: str = ""
-
-
-def detect_provider(name: str, *, exclude_dir: Path | None = None) -> _ProviderDetection:
-    if name not in SUPPORTED_PROVIDER_NAMES:
-        raise LoghopError(f"unsupported provider: {name}", code=E_UNKNOWN_PROVIDER)
-    if exclude_dir is not None and name == "codex":
-        from loghop.install._shim import detect_real_binary
-
-        path = detect_real_binary(name, exclude_dir=exclude_dir) or ""
-    else:
-        path = shutil.which(name) or ""
-    return _ProviderDetection(name=name, path=path)
-
-
-def detect_all() -> dict[str, _ProviderDetection]:
-    return {name: detect_provider(name) for name in SUPPORTED_PROVIDER_NAMES}
-
-
-def build_launch_command(
-    provider: str,
-    executable: str,
-    prompt: str,
-    project_root: Path,
-    *,
-    interactive: bool = False,
-) -> list[str]:
-    """Return the argv list for launching ``provider``.
-
-    Defense in depth:
-    - ``provider`` is validated against ``SUPPORTED_PROVIDER_NAMES``.
-    - ``executable`` must be an absolute path. ``shutil.which`` already
-      returns absolute paths in practice, but we verify here so a malicious
-      or malformed config that injected a relative path cannot cause CWD
-      hijacking when ``subprocess.run`` resolves it.
-    """
-    if provider not in SUPPORTED_PROVIDER_NAMES:
-        raise ValueError(f"unsupported provider: {provider}")
-    if not executable or not Path(executable).is_absolute():
-        raise ValueError(f"provider executable must be an absolute path, got: {executable!r}")
-    if provider == "codex":
-        if interactive:
-            return [executable, "--", prompt]
-        return [executable, "exec", "--cd", str(project_root), "--color", "never", prompt]
-    if provider == "claude":
+    def build_launch_command(
+        self,
+        executable: str,
+        prompt: str,
+        project_root: Path,
+        *,
+        interactive: bool = False,
+    ) -> list[str]:
         claude_args = [executable]
-        if _claude_uses_api_transport(project_root) and not interactive:
+        if claude_uses_api_transport(project_root) and not interactive:
             claude_args.append("--bare")
         if interactive:
             return [*claude_args, prompt]
         return [*claude_args, "--print", prompt]
-    raise ValueError(f"unsupported provider: {provider}")
+
+    def ensure_ready(self, executable: str, project_root: Path) -> None:
+        auth_check = _claude_auth_check(executable, project_root)
+        if auth_check.available:
+            return
+        raise LoghopError(
+            auth_check.message,
+            code=E_PROVIDER_AUTH_MISSING,
+        )
 
 
-def ensure_provider_ready(provider: str, executable: str, project_root: Path) -> None:
-    """Fail before creating loghop records when provider auth is known-bad."""
-    if provider not in SUPPORTED_PROVIDER_NAMES:
-        raise ValueError(f"unsupported provider: {provider}")
-    if provider != "claude":
-        return
-    auth_check = _claude_auth_check(executable, project_root)
-    if auth_check.available:
-        return
-    raise LoghopError(
-        auth_check.message,
-        code=E_PROVIDER_AUTH_MISSING,
-    )
+class _ClaudeAuthCheck:
+    def __init__(self, available: bool, message: str = ""):
+        self.available = available
+        self.message = message
 
 
 def _claude_auth_check(executable: str, project_root: Path) -> _ClaudeAuthCheck:
-    if _claude_uses_api_transport(project_root):
+    if claude_uses_api_transport(project_root):
         return _ClaudeAuthCheck(available=True)
     try:
         completed = _run_claude_auth_status(executable, project_root)
@@ -210,38 +176,20 @@ def _run_claude_auth_status(
     raise OSError("Claude auth preflight did not run")
 
 
-_API_CREDENTIAL_ENV_VARS = (
-    "ANTHROPIC_API_KEY",
-    "ANTHROPIC_AUTH_TOKEN",
-)
-_API_TRANSPORT_ENV_VARS = ("ANTHROPIC_BASE_URL",)
-_CLAUDE_ENV_PREFIXES = (
-    "ANTHROPIC_",
-    "CLAUDE_CODE_",
-)
-
-
 def claude_api_environment(project_root: Path | None = None) -> dict[str, str]:
-    """Return Claude-related environment from the current or interactive shell.
+    """Return Claude-related environment from the current or interactive shell."""
+    env_dict = _current_claude_environment()
+    if not _has_claude_api_credential(env_dict):
+        from loghop import providers
 
-    TUI-launched shells do not always inherit the user's interactive shell
-    exports. When the current process lacks credentials, probe an interactive
-    bash environment and only keep Claude-scoped variables.
-    """
-    env = _current_claude_environment()
-    if not _has_claude_api_credential(env):
-        env.update(_interactive_shell_claude_environment())
+        env_dict.update(providers._interactive_shell_claude_environment())
 
     if project_root is not None:
         for path in _claude_settings_paths(project_root):
             for key, value in _settings_claude_environment(_read_json_object(path)).items():
-                env.setdefault(key, value)
+                env_dict.setdefault(key, value)
 
-    return {key: value for key, value in env.items() if value}
-
-
-def _claude_uses_api_transport(project_root: Path) -> bool:
-    return claude_uses_api_transport(project_root)
+    return {key: value for key, value in env_dict.items() if value}
 
 
 def claude_uses_api_transport(project_root: Path) -> bool:
@@ -264,7 +212,9 @@ def _current_claude_environment() -> dict[str, str]:
 
 def invalidate_shell_env_cache() -> None:
     """Clear the cached interactive shell environment probe."""
-    _interactive_shell_claude_environment.cache_clear()
+    from loghop import providers
+
+    providers._interactive_shell_claude_environment.cache_clear()
 
 
 @lru_cache(maxsize=1)
@@ -297,13 +247,13 @@ def _is_claude_environment_name(name: str) -> bool:
     return name in _API_CREDENTIAL_ENV_VARS or name.startswith(_CLAUDE_ENV_PREFIXES)
 
 
-def _has_claude_api_credential(env: dict[str, str]) -> bool:
-    return any(bool(env.get(varname)) for varname in _API_CREDENTIAL_ENV_VARS)
+def _has_claude_api_credential(env_dict: dict[str, str]) -> bool:
+    return any(bool(env_dict.get(varname)) for varname in _API_CREDENTIAL_ENV_VARS)
 
 
-def _has_claude_api_transport(env: dict[str, str]) -> bool:
-    return _has_claude_api_credential(env) or any(
-        bool(env.get(varname)) for varname in _API_TRANSPORT_ENV_VARS
+def _has_claude_api_transport(env_dict: dict[str, str]) -> bool:
+    return _has_claude_api_credential(env_dict) or any(
+        bool(env_dict.get(varname)) for varname in _API_TRANSPORT_ENV_VARS
     )
 
 
@@ -332,12 +282,12 @@ def _settings_enable_api_transport(settings: dict[str, object]) -> bool:
 
 
 def _settings_claude_environment(settings: dict[str, object]) -> dict[str, str]:
-    env = settings.get("env")
-    if not isinstance(env, dict):
+    env_dict = settings.get("env")
+    if not isinstance(env_dict, dict):
         return {}
     return {
         key: value
-        for key, value in env.items()
+        for key, value in env_dict.items()
         if isinstance(key, str) and isinstance(value, str) and _is_claude_environment_name(key)
     }
 

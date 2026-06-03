@@ -15,6 +15,19 @@ _LOGGER = get_logger()
 def detect_terminal_emulator() -> str | None:
     """Detect available terminal emulator on the system."""
 
+    try:
+        from loghop.install._config import _load_global_config
+
+        config = _load_global_config()
+        term_config = config.get("terminal", {})
+        if "template" in term_config:
+            return "custom"
+        configured_term = term_config.get("emulator")
+        if isinstance(configured_term, str) and configured_term.strip():
+            return configured_term.strip()
+    except Exception:  # noqa: BLE001
+        pass
+
     candidates = [
         "gnome-terminal",
         "konsole",
@@ -169,16 +182,56 @@ def launch_in_new_tab(
         )
         return False
 
-    builder = _TERMINAL_BUILDERS.get(term)
-    if builder is None:
-        _LOGGER.warning(
-            "detected terminal %s has no launcher builder",
-            extra={"component": "launcher", "terminal": term},
-        )
-        return False
-
     workdir = str(cwd) if cwd else None
-    args = builder(safe_cmd, workdir, title)  # type: ignore[operator]  # builder is narrowed by runtime terminal capability dispatch
+
+    # Load custom template if available
+    template = None
+    try:
+        from loghop.install._config import _load_global_config
+
+        config = _load_global_config()
+        term_config = config.get("terminal", {})
+        template = term_config.get("template")
+    except Exception:  # noqa: BLE001
+        pass
+
+    if template:
+        if isinstance(template, str):
+            template_args = shlex.split(template)
+        elif isinstance(template, list):
+            template_args = [str(x) for x in template]
+        else:
+            template_args = []
+
+        if template_args:
+            bash_cmd_list = _bash_lc(safe_cmd)
+            args = []
+            for arg in template_args:
+                if arg == "{bash_command}":
+                    args.extend(bash_cmd_list)
+                else:
+                    val = arg.replace("{title}", title)
+                    val = val.replace("{workdir}", workdir or str(Path.cwd()))
+                    val = val.replace("{command}", safe_cmd)
+                    args.append(val)
+        else:
+            _LOGGER.warning(
+                "custom terminal template is empty",
+                extra={"component": "launcher"},
+            )
+            return False
+    else:
+        builder = _TERMINAL_BUILDERS.get(term)
+        if builder is None:
+            # Fallback to generic builder for custom emulators with no builder
+            _LOGGER.info(
+                "no custom builder for %s, falling back to generic execution",
+                term,
+                extra={"component": "launcher", "terminal": term},
+            )
+            args = [term, "-e"] + _bash_lc(safe_cmd)
+        else:
+            args = builder(safe_cmd, workdir, title)  # type: ignore[operator]
 
     try:
         subprocess.Popen(args, start_new_session=True)  # nosec B603

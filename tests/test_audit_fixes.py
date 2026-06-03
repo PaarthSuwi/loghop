@@ -235,3 +235,20 @@ class TestCodexRollout:
         lines.append(json.dumps({"type": "session_meta", "payload": {"cwd": str(tmp_path)}}))
         path.write_text("\n".join(lines) + "\n", encoding="utf-8")
         assert _matches_cwd(path, str(tmp_path)) is False
+
+
+class TestRedactionAudited:
+    def test_redact_space_leak_and_snake_case(self) -> None:
+        from loghop.redact import redact_text
+
+        # Space leak in quoted password assignments
+        assert redact_text('PASSWORD="my secret password"') == "PASSWORD=[redacted]"
+        assert redact_text("PASSWORD='my secret password'") == "PASSWORD=[redacted]"
+
+        # snake_case generic key assignments
+        assert redact_text('DB_PASSWORD="mysecret"') == "DB_PASSWORD=[redacted]"
+        assert redact_text('my_api_key="secret"') == "my_api_key=[redacted]"
+
+        # JSON prefix replacement corruption check
+        assert redact_text('"db_password": "my secret password"') == '"db_password": "[redacted]"'
+        assert redact_text('"admin_token": "abc123xyz"') == '"admin_token": "[redacted]"'

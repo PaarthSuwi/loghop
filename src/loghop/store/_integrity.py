@@ -20,6 +20,7 @@ from loghop.store._io import atomic_write_private_text, safe_read_text
 
 _LOGGER = get_logger()
 _INTEGRITY_KEY_BYTES = 32
+_LEGACY_SIGNATURE_LEN = 16
 
 
 def _derive_key(project_root: Path) -> bytes:
@@ -58,13 +59,13 @@ def compute_signature(project_root: Path, frontmatter_text: str, body_text: str 
         _derive_key(project_root),
         _signature_payload(frontmatter_text, body_text),
         hashlib.sha256,
-    ).hexdigest()[:16]
+    ).hexdigest()[:32]
 
 
 def embed_signature(project_root: Path, frontmatter_text: str, body_text: str = "") -> str:
     """Append a ``_signature`` field to frontmatter and return it.
 
-    Re-signing is idempotent: an existing ``_signature`` field is removed before
+    Re-signing is idempotent: an existing ``_signature`` signature field is removed before
     computing the new value.  When *body_text* is supplied, the signature covers
     both metadata and body content.
     """
@@ -94,9 +95,18 @@ def verify_signature(project_root: Path, frontmatter_text: str, body_text: str =
     expected = compute_signature(project_root, clean_frontmatter, body_text)
     if hmac.compare_digest(embedded, expected):
         return True
+    if len(embedded) == _LEGACY_SIGNATURE_LEN and hmac.compare_digest(
+        embedded, expected[:_LEGACY_SIGNATURE_LEN]
+    ):
+        return True
     if body_text:
         legacy_expected = compute_signature(project_root, clean_frontmatter)
-        return hmac.compare_digest(embedded, legacy_expected)
+        if hmac.compare_digest(embedded, legacy_expected):
+            return True
+        if len(embedded) == _LEGACY_SIGNATURE_LEN and hmac.compare_digest(
+            embedded, legacy_expected[:_LEGACY_SIGNATURE_LEN]
+        ):
+            return True
     return False
 
 

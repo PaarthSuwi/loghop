@@ -142,7 +142,10 @@ def project_lock(
                 _lock_depth.pop(lock_key, None)
         return
 
-    fd = os.open(path, os.O_CREAT | os.O_RDWR, FILE_MODE)
+    flags = os.O_CREAT | os.O_RDWR
+    if hasattr(os, "O_NOFOLLOW"):
+        flags |= os.O_NOFOLLOW
+    fd = os.open(path, flags, FILE_MODE)
     try:
         while True:
             try:
