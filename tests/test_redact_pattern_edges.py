@@ -60,6 +60,19 @@ from loghop.redact import redact_text
             "-----BEGIN RSA PRIVATE KEY-----\nMIIEowIBAAKCAQEA....\n-----END RSA PRIVATE KEY-----",
             True,
         ),
+        # Twilio API keys.
+        ("SK1234567890ABCDEF1234567890ABCDEF", True),  # 32 uppercase hex -- MUST match.
+        ("SK1234567890abcdef1234567890abcdef", False),  # lowercase -- must NOT match.
+        ("SK12345678", False),  # too short -- must NOT match.
+        # Stripe restricted keys.
+        ("rk_live_1234567890ABCDEFGHIJKLMNOP", True),
+        ("rk_live_short", False),  # fewer than 24 chars after prefix -- must NOT match.
+        # MongoDB SRV connection strings.
+        ("mongodb+srv://user:s3cr3t@cluster0.example.mongodb.net/db", True),
+        ("mongodb://user:pass@host/db", False),  # plain mongodb:// caught by generic rule but not the SRV one; this fixture just checks the SRV pattern doesn't over-fire.
+        # Stripe webhook secrets.
+        ("whsec_ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789AB", True),
+        ("whsec_tooshort", False),  # fewer than 32 chars -- must NOT match.
     ],
 )
 def test_redaction_recognises_realistic_secrets(text: str, should_be_redacted: bool) -> None:
