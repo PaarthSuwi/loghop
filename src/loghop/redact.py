@@ -145,6 +145,27 @@ SECRET_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
         re.compile(r"(?i)\bToken\s+[A-Za-z0-9_\-.+/]+=*"),
         "Token [redacted]",
     ),
+    # Twilio API keys -- SK followed by exactly 32 uppercase hex characters.
+    (
+        re.compile(r"\bSK[0-9A-F]{32}\b"),
+        "[redacted twilio api key]",
+    ),
+    # Stripe restricted keys (rk_live_) -- not caught by the generic prefix rule.
+    (
+        re.compile(r"\brk_live_[A-Za-z0-9]{24,}"),
+        "[redacted stripe restricted key]",
+    ),
+    # MongoDB SRV connection strings -- the +srv scheme is not caught by the
+    # generic credential-URL pattern above.
+    (
+        re.compile(r"mongodb\+srv://[^:@\s]+:[^@\s]+@\S+"),
+        "[redacted mongodb srv url]",
+    ),
+    # Stripe webhook signing secrets.
+    (
+        re.compile(r"\bwhsec_[A-Za-z0-9]{32,}"),
+        "[redacted stripe webhook secret]",
+    ),
 )
 
 
